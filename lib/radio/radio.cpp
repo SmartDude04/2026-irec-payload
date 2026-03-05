@@ -1,8 +1,5 @@
 #include "radio.h"
 
-#include <SPI.h>
-#include <RH_RF95.h>
-
 // Definitions for specific pinouts
 #define RFM95_CS 4
 #define RFM95_INT 3
@@ -11,8 +8,7 @@
 // Frequency definition
 #define RF95_FREQ 433.0
 
-radio::radio() : 
-    rf95(RFM95_CS, RFM95_INT)
+radio::radio() : rf95(RFM95_CS, RFM95_INT)
 {
     
 }
@@ -60,8 +56,27 @@ bool radio::send(const String &message)
     // Convert the string into a char[]
     char radiopacket[message.length() + 1];
     message.toCharArray(radiopacket, sizeof(radiopacket));
-    
     const bool send_success = rf95.send(reinterpret_cast<uint8_t*>(radiopacket), message.length());
+    if (!send_success)
+    {
+        return false;
+    }
+    
+    // Wait until the packet is fully sent
+    rf95.waitPacketSent();
+    
+    return true;
+}
+
+bool radio::send(const uint8_t *const message, const size_t message_length)
+{
+    if (message_length > RH_RF95_MAX_MESSAGE_LEN)
+    {
+        return false;
+    }
+    
+    // Attempt to send the packet
+    const bool send_success = rf95.send(message, message_length);
     if (!send_success)
     {
         return false;
@@ -83,7 +98,7 @@ bool radio::message_available()
     return rf95.available();
 }
 
-String radio::receive()
+bool radio::receive(String &message)
 {
     if (rf95.available())
     {
@@ -92,11 +107,30 @@ String radio::receive()
         if (rf95.recv(buf, &len))
         {
             buf[len] = '\0';
-            return {reinterpret_cast<char*>(buf)};
+            message = reinterpret_cast<char*>(buf);
+            return true;
         }
     }
-    
-    return "";
+    return false;
+}
+
+bool radio::receive(uint8_t *message, size_t &message_length)
+{
+    if (rf95.available())
+    {
+        uint8_t buf[RH_RF95_MAX_MESSAGE_LEN + 1];
+        uint8_t len = sizeof(buf);
+        if (rf95.recv(buf, &len))
+        {
+            if (len <= message_length)
+            {
+                memcpy(message, buf, len);
+                message_length = len;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 int16_t radio::last_rssi()
