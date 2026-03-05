@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "radio-core/radio.h"
+#include "radio/radio.h"
 
 radio radio;
 

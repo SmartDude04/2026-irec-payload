@@ -7,10 +7,10 @@
 class radio
 {
 public:
-    explicit radio();
+    radio();
 
     /**
-     * Initalizes the radio set to the following pinouts:
+     * Initializes the radio set to the following pinouts:
      * - 5V  -> VIN
      * - GND -> GND
      * - 3   -> G0
@@ -47,7 +47,7 @@ public:
 
     /**
      * If a message is ready to be received, it returns that message. Otherwise, a blank string is returned
-     * @return Message receieved
+     * @return Message received
      */
     String receive();
 
