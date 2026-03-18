@@ -68,7 +68,7 @@ bool radio::send(const String &message)
     return true;
 }
 
-bool radio::send(const uint8_t *const message, const size_t message_length)
+bool radio::send(const uint8_t *const message, const uint8_t message_length)
 {
     if (message_length > RH_RF95_MAX_MESSAGE_LEN)
     {

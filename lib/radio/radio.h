@@ -38,7 +38,7 @@ public:
     * @return True if successfully sent, false otherwise. This could be due to the message length being too long
      * (check RH_RF95_MAX_MESSAGE_LEN) or if the radio failed to send the message.
      */
-    bool send(const uint8_t *message, size_t message_length);
+    bool send(const uint8_t *message, uint8_t message_length);
 
     /**
      * Blocks for the specified number of milliseconds for a message from another radio to be received. If no message
