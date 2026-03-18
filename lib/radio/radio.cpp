@@ -114,7 +114,7 @@ bool radio::receive(String &message)
     return false;
 }
 
-bool radio::receive(uint8_t *message, size_t &message_length)
+bool radio::receive(uint8_t *message, uint8_t &message_length)
 {
     if (rf95.available())
     {

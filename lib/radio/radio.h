@@ -70,7 +70,7 @@ public:
      * @return True if successfully stored the message; false otherwise. This could be due to a radio failure or too
      * small a buffer. It is always recommended to make a buffer of size RH_RF95_MAX_MESSAGE_LEN + 1
      */
-    bool receive(uint8_t *message, size_t &message_length);
+    bool receive(uint8_t *message, uint8_t &message_length);
 
     /**
     * Returns the most recent RSSI (Receiver Signal Strength Indicator). Usually it is the RSSI of the last received
