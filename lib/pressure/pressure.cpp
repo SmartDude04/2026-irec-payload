@@ -11,15 +11,15 @@ pressure::pressure() : mprls(RESET_PIN, EOC_PIN)
 
 bool pressure::init()
 {
+    pinMode(RESET_PIN, OUTPUT);
+    digitalWrite(RESET_PIN, HIGH);
+    pinMode(EOC_PIN, INPUT);
     const bool ret = mprls.begin();
     if (!ret)
     {
         return false;
     }
     
-    pinMode(RESET_PIN, OUTPUT);
-    digitalWrite(RESET_PIN, HIGH);
-    pinMode(EOC_PIN, INPUT);
     return true;
 }
 
