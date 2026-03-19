@@ -7,13 +7,15 @@ scd::scd()
 
 bool scd::init()
 {
+    pinMode(RDY_PIN, INPUT);
+    
+    delay(100);
+    
     const bool ret = scd30.begin();
     if (!ret)
     {
         return false;
     }
-    
-    pinMode(RDY_PIN, INPUT);
     
     return true;
 }
