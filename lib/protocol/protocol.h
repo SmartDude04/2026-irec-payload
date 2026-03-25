@@ -13,14 +13,13 @@ public:
     static constexpr uint8_t MAX_PAYLOAD_LENGTH = 192;
     
     // Data and metadata about a radio packet
-    
     struct packet
     {
         // Number representing the type of the radio packet
         uint8_t type;
         
         // The number for this payload; if a number is skipped a transmission is skipped
-        uint8_t payload_num;
+        uint16_t payload_num;
         
         // Length of the payload
         uint8_t length;
@@ -28,6 +27,9 @@ public:
         // Payload
         uint8_t payload[MAX_PAYLOAD_LENGTH];
     };
+    
+    // Size of the storage container for the packet
+    static constexpr uint8_t MIN_BYTES_FOR_PACKET = MAX_PAYLOAD_LENGTH + 6;
 
     /**
      * Initialize the protocol object. Must be done before attempting to transmit data!
@@ -38,11 +40,12 @@ public:
      * 
      * @param type Number representing the type of data being sent over the radio. TODO: Make file detailing types and structs for radio types
      * @param payload Payload to send over the radio
-     * @param length Length of the payload
+     * @param payload_length Length of the payload
      * @param bytes Bytes where the payload will be stored. Should be of size at least RH_RF95_MAX_MESSAGE_LEN
+     * @param bytes_length length of the bytes array
      * @return Number of bytes output in the buffer (i.e. size of packet to be sent over radio), or zero if unsuccessful (likely due to size of the bytes)
      */
-    uint8_t encode(uint8_t type, const uint8_t *payload, uint8_t length, uint8_t *bytes);
+    uint8_t encode(uint8_t type, const uint8_t *payload, uint8_t payload_length, uint8_t *bytes, uint16_t bytes_length);
 
     /**
      * 
