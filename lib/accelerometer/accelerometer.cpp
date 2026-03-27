@@ -7,30 +7,21 @@ accelerometer::accelerometer() = default;
 bool accelerometer::init()
 {
     // Check if something exists on address 0x68 first
-    return mpu.begin();
+    mpu.initialize();
+    return mpu.testConnection();
 }
 
 void accelerometer::read_data(accelerometer_data &data)
 {
-    sensors_event_t a, g, temp;
-    mpu.getEvent(&a, &g, &temp);
-    
-    data = {
-        .ax = a.acceleration.x,
-        .ay = a.acceleration.y,
-        .az = a.acceleration.z,
-        .gx = g.gyro.x,
-        .gy = g.gyro.y,
-        .gz = g.gyro.z
-    };
+    mpu.getMotion6(&data.ax, &data.ay, &data.az, &data.gx, &data.gy, &data.gz);
 }
 
-mpu6050_accel_range_t accelerometer::get_accel_range()
+uint8_t accelerometer::get_accel_range()
 {
-    return mpu.getAccelerometerRange();
+    return mpu.getFullScaleAccelRange();
 }
 
-void accelerometer::set_accel_range(const mpu6050_accel_range_t range)
+void accelerometer::set_accel_range(const uint8_t range)
 {
-    mpu.setAccelerometerRange(range);
+    mpu.setFullScaleAccelRange(range);
 }
