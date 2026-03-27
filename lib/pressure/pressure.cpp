@@ -15,7 +15,7 @@ bool pressure::init()
     digitalWrite(RESET_PIN, HIGH);
     pinMode(EOC_PIN, INPUT);
     
-    delay(100);
+    delay(20);
     
     const bool ret = mprls.begin();
     if (!ret)

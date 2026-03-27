@@ -10,7 +10,7 @@ public:
 
     /**
      * Attempts to find and initialize the MPRLS Pressure Sensor at I2C address 0x18 with pinouts:
-     * - 3.3V -> VIN
+     * - 3.3V-5V -> VIN
      * - GND ->  GND
      * - SDA ->  SDA
      * - SCL ->  SCL
