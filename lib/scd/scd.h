@@ -18,7 +18,7 @@ public:
 
     /**
      * Attempts to find and initialize the SCD30 sensor at I2C address x61 with the following pinouts:
-     * - 3.3V -> VIN
+     * - 3.3V-5V -> VIN
      * - GND ->  GND
      * - SCL ->  SCL
      * - SDA ->  SDA

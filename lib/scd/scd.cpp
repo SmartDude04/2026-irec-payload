@@ -2,8 +2,7 @@
 
 #define RDY_PIN 9
 
-scd::scd()
-= default;
+scd::scd() = default;
 
 bool scd::init()
 {
