@@ -1,7 +1,7 @@
 #ifndef INC_2026_IREC_PAYLOAD_ACCELEROMETER_H
 #define INC_2026_IREC_PAYLOAD_ACCELEROMETER_H
 
-#include <../../.pio/libdeps/uno/MPU6050/src/MPU6050.h> 
+#include <MPU6050.h> 
 
 typedef struct
 {
