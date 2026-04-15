@@ -1,13 +1,13 @@
 #include "accelerometer.h"
 
-#include <Adafruit_Sensor.h>
-
 accelerometer::accelerometer() = default;
 
 bool accelerometer::init()
 {
+    Wire.begin();
     // Check if something exists on address 0x68 first
     mpu.initialize();
+    delay(10);
     return mpu.testConnection();
 }
 

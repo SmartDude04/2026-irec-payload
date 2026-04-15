@@ -8,25 +8,19 @@
 #include <payloads/most_environmental.h>
 #include <payloads/all_environmental.h>
 #include <Servo.h>
-#include <Adafruit_BMP280.h>
-#include <MPU6050.h>
 
 #define EXPERIMENT_ACCEL_THRESHOLD 100
 
 constexpr bool RADIO = true;
-constexpr bool PRESSURE = false;
-constexpr bool SCD = false;
-constexpr bool SERVO = false;
-constexpr bool ACCELEROMETER = true;
-constexpr bool ALTIMETER = true;
+constexpr bool PRESSURE = true;
+constexpr bool SCD = true;
+constexpr bool SERVO = true;
 
 radio radio;
 pressure pressure;
 scd scd;
-MPU6050 mpu;
 Servo servo;
 protocol protocol;
-Adafruit_BMP280 bmp;
 
 uint8_t microgravity_counter = 0;
 bool experiment_started = false;
@@ -38,23 +32,15 @@ void setup()
     Serial.begin(115200);
     while (!Serial) { delay(1); }
     
-    // Serial.println("Initializing...");
+    // Start I2C and wait 2 seconds to ensure all sensors are booted up
+    Wire.begin();
+    delay(2000);
     
     const bool radio_init = RADIO ? radio.init() : false;
-    // Serial.println("Radio initialized");
     const bool pressure_init = PRESSURE ? pressure.init() : false;
-    // Serial.println("Pressure sensor initialized");
     const bool scd_init = SCD ? scd.init() : false;
-    // Serial.println("SCD30 initialized");
     const bool servo_init = SERVO ? servo.attach(5) != INVALID_SERVO : false;
-    // Serial.println("Servo initialized");
-    mpu.initialize();
-    delay(100);
-    const bool accelerometer_init = ACCELEROMETER ? mpu.testConnection() : false;
-    // Serial.println("Accelerometer initialized");
-    const bool altimeter_init = ALTIMETER ? bmp.begin() : false;
     
-    // Serial.println("Sensors initialized");
     
     // Initalize the radio
     if (RADIO)
@@ -106,31 +92,8 @@ void setup()
         }
     }
     
-    if (ACCELEROMETER)
-    {
-        if (!accelerometer_init)
-        {
-            Serial.println("ERROR: Accelerometer failed to initialize");
-        }
-        else
-        {
-            Serial.println("Accelerometer initialized");
-        }       
-    }
     
-    if (ALTIMETER)
-    {
-        if (!altimeter_init)
-        {
-            Serial.println("ERROR: Altimeter failed to initialize");
-        }
-        else
-        {
-            Serial.println("Altimeter initialized");
-        }
-    }
-    
-    if ((RADIO && !radio_init) || (PRESSURE && !pressure_init) || (SCD && !scd_init) || (SERVO && !servo_init) || (ACCELEROMETER && !accelerometer_init))
+    if ((RADIO && !radio_init) || (PRESSURE && !pressure_init) || (SCD && !scd_init) || (SERVO && !servo_init))
     {
         // If the radio fine but others are bad, send a message over the radio. Otherwise, there's not much we can do
         if (RADIO && radio_init)
@@ -139,8 +102,6 @@ void setup()
             message += PRESSURE && !pressure_init ? " Pressure " : "";
             message += SCD && !scd_init ? " SCD30 " : "";
             message += SERVO && !servo_init ? " Servo " : "";
-            message += ACCELEROMETER && !accelerometer_init ? " Accelerometer " : "";
-            message += ALTIMETER ? " Altimeter " : "";
 
             string_payload fatal;
             strcpy(fatal.message, message.c_str());
@@ -172,17 +133,15 @@ void loop()
     // If not armed, wait until the arm signal through the radio is given
     if (!armed)
     {
-        while (1)
+        while (true)
         {
             if (radio.message_available())
             {
                 uint8_t message[RH_RF95_MAX_MESSAGE_LEN];
-                uint8_t message_length = sizeof(message);
-                if (radio.receive(message, message_length))
+                if (uint8_t message_length = sizeof(message); radio.receive(message, message_length))
                 {
                     protocol::packet packet = {};
-                    const bool decode_success = protocol::decode(message, message_length, packet);
-                    if (decode_success && packet.type == ARM_PAYLOAD_TYPE && reinterpret_cast<arm_payload*>(packet.payload)->arm)
+                    if (const bool decode_success = protocol::decode(message, message_length, packet); decode_success && packet.type == ARM_PAYLOAD_TYPE && reinterpret_cast<arm_payload*>(packet.payload)->arm)
                     {
                         armed = true;
                         
@@ -202,13 +161,11 @@ void loop()
     // Check for any radio messages
     if (radio.message_available())
     {
+        Serial.println("Radio message received");
         uint8_t message[RH_RF95_MAX_MESSAGE_LEN];
-        uint8_t message_length = sizeof(message);
-        if (radio.receive(message, message_length))
+        if (uint8_t message_length = sizeof(message); radio.receive(message, message_length))
         {
-            protocol::packet packet = {};
-            const bool decode_success = protocol::decode(message, message_length, packet);
-            if (decode_success)
+            if (protocol::packet packet = {}; protocol::decode(message, message_length, packet))
             {
                 // Right now, the only meaningful type would be an unarm signal
                 if (packet.type == ARM_PAYLOAD_TYPE)
@@ -244,8 +201,8 @@ void loop()
         // Send an all_environmental payload
         all_environmental_payload payload;
         payload.pressure_hpa = pressure.get_pressure_hpa();
-        payload.altitude_m = bmp.readAltitude();
-        payload.acceleration_g = mpu.getAccelerationX();
+        // payload.altitude_m = bmp.readAltitude(); // TODO: Make variable to store pressure on start-up
+        // payload.acceleration_g = mpu.getAccelerationX();
         scd_data scd_data;
         scd.read_data(scd_data);
         payload.CO2 = scd_data.CO2;
@@ -253,8 +210,7 @@ void loop()
         payload.humidity = scd_data.humidity;
         
         uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
-        const uint8_t ret = protocol.encode(ALL_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
-        if (ret)
+        if (const uint8_t ret = protocol.encode(ALL_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
         {
             radio.send(radio_packet, ret);
         }
@@ -264,44 +220,43 @@ void loop()
         // Send a most_environmental payload
         most_environmental_payload payload;
         payload.pressure_hpa = pressure.get_pressure_hpa();
-        payload.altitude_m = bmp.readAltitude();
-        payload.acceleration_g = mpu.getAccelerationX();
+        // payload.altitude_m = bmp.readAltitude();
+        // payload.acceleration_g = mpu.getAccelerationX();
         
         uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
-        const uint8_t ret = protocol.encode(MOST_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
-        if (ret)
+        if (const uint8_t ret = protocol.encode(MOST_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
         {
             radio.send(radio_packet, ret);
         }
     }
     
     // If acceleration stays below the threshold for long enough, start the experiment!
-    if (abs(mpu.getAccelerationX()) < EXPERIMENT_ACCEL_THRESHOLD && abs(mpu.getAccelerationY()) < EXPERIMENT_ACCEL_THRESHOLD && abs(mpu.getAccelerationZ()) < EXPERIMENT_ACCEL_THRESHOLD)
-    {
-        microgravity_counter++;
-        if (microgravity_counter > 10)
-        {
-            // Starting the experiment!
-            experiment_started = true;
-            microgravity_counter = 0;
-            
-            // Send a message saying it has started
-            string_payload payload;
-            strcpy(payload.message, "Experiment started!");
-            uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
-            const uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
-            if (ret)
-            {
-                radio.send(radio_packet, ret);
-            }
-            
-            // Turn the servo
-            servo.write(180);
-        }
-    }
-    else
-    {
-        microgravity_counter = 0;
-    }
+    // if (abs(mpu.getAccelerationX()) < EXPERIMENT_ACCEL_THRESHOLD && abs(mpu.getAccelerationY()) < EXPERIMENT_ACCEL_THRESHOLD && abs(mpu.getAccelerationZ()) < EXPERIMENT_ACCEL_THRESHOLD)
+    // {
+    //     microgravity_counter++;
+    //     if (microgravity_counter > 10)
+    //     {
+    //         // Starting the experiment!
+    //         experiment_started = true;
+    //         microgravity_counter = 0;
+    //         
+    //         // Send a message saying it has started
+    //         string_payload payload;
+    //         strcpy(payload.message, "Experiment started!");
+    //         uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
+    //         const uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
+    //         if (ret)
+    //         {
+    //             radio.send(radio_packet, ret);
+    //         }
+    //         
+    //         // Turn the servo
+    //         servo.write(180);
+    //     }
+    // }
+    // else
+    // {
+    //     microgravity_counter = 0;
+    // }
     delay(100);
 }

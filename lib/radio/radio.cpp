@@ -26,7 +26,18 @@ bool radio::init()
     digitalWrite(RFM95_RST, HIGH);
     delay(10);
     
-    if (!rf95.init())
+    // Attempt to initialize the radio 5 times before failing
+    bool init_success = false;
+    for (int i = 0; i < 5; i++)
+    {
+        if (rf95.init())
+        {
+            init_success = true;
+            break;
+        }
+    }
+    
+    if (!init_success)
     {
         return false;
     }

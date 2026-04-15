@@ -7,16 +7,18 @@ scd::scd() = default;
 bool scd::init()
 {
     pinMode(RDY_PIN, INPUT);
-    
-    delay(100);
-    
-    const bool ret = scd30.begin();
-    if (!ret)
+    delay(10);
+
+    // Try top start the sensor 5 times
+    for (int i = 0; i < 5; i++)
     {
-        return false;
+        if (scd30.begin())
+        {
+            return true;
+        }
+        delay(100);
     }
-    
-    return true;
+    return false;
 }
 
 uint16_t scd::get_measurement_interval()

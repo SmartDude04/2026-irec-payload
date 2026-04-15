@@ -1,7 +1,7 @@
 #ifndef INC_2026_IREC_PAYLOAD_RADIO_H
 #define INC_2026_IREC_PAYLOAD_RADIO_H
 
-#include <WString.h>
+#include <Arduino.h>
 #include <RH_RF95.h>
 
 class radio
