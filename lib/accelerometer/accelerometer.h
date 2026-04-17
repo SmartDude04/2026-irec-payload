@@ -26,7 +26,7 @@ public:
      * @param z Acceleration in z, in g's
      * @return True if successfully read; false otherwise
      */
-    bool read_data(float &x, float &y, float &z);
+    bool get_acceleration(float &x, float &y, float &z);
 private:
     Adafruit_LSM6DSL lsm6dsl;
 };

@@ -29,7 +29,7 @@ bool accelerometer::init()
     return true;
 }
 
-bool accelerometer::read_data(float &x, float &y, float &z)
+bool accelerometer::get_acceleration(float &x, float &y, float &z)
 {
     sensors_event_t accel;
     sensors_event_t gyro;
