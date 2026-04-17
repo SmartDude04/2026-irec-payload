@@ -1,17 +1,7 @@
 #ifndef INC_2026_IREC_PAYLOAD_ACCELEROMETER_H
 #define INC_2026_IREC_PAYLOAD_ACCELEROMETER_H
 
-#include <MPU6050.h> 
-
-typedef struct
-{
-    int16_t ax;
-    int16_t ay;
-    int16_t az;
-    int16_t gx;
-    int16_t gy;
-    int16_t gz;
-} accelerometer_data;
+#include <Adafruit_LSM6DSL.h>
 
 class accelerometer
 {
@@ -19,7 +9,7 @@ public:
     accelerometer();
 
     /**
-     * Attempts to find and initialize the accelerometer at I2C address 0x68 with the following pinouts:
+     * Attempts to find and initialize the accelerometer at I2C address 0x6A with the following pinouts:
      * - 5V -> VIN
      * - GND -> GND
      * - SCL -> SCL
@@ -30,25 +20,15 @@ public:
     bool init();
 
     /**
-     * Attempts to read data from the accelerometer and store it in the accelerometer_data struct
-     * @param data accelerometer_data struct where the read data will be stored
+     * Attempts to read data from the accelerometer
+     * @param x Acceleration in x, in g's
+     * @param y Acceleration in y (axis of the rocket), in g's
+     * @param z Acceleration in z, in g's
      * @return True if successfully read; false otherwise
      */
-    void read_data(accelerometer_data &data);
-
-    /**
-     * Returns the current range of the accelerometer
-     * @return The current range of the accelerometer
-     */
-    uint8_t get_accel_range();
-
-    /**
-     * Sets the new range for the accelerometer
-     * @param range New range for the accelerometer
-     */
-    void set_accel_range(uint8_t range);
+    bool read_data(float &x, float &y, float &z);
 private:
-    MPU6050 mpu;
+    Adafruit_LSM6DSL lsm6dsl;
 };
 
 
