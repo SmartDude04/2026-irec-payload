@@ -31,8 +31,11 @@ accelerometer accelerometer;
 altimeter altimeter;
 
 uint8_t microgravity_counter = 0;
+double acceleration_avg = 0;
 bool experiment_started = false;
 bool armed = false;
+
+void avg_acceleration();
 
 void setup()
 {
@@ -232,10 +235,8 @@ void loop()
         // Send an all_environmental payload
         all_environmental_payload payload;
         payload.pressure_hpa = pressure.get_pressure_hpa();
-        payload.altitude_m = altimeter.get_altitude(); // TODO: Make variable to store pressure on start-up
-        float ax, ay, az;
-        accelerometer.get_acceleration(ax, ay, az);
-        payload.acceleration_g = ay;
+        payload.altitude_m = altimeter.get_altitude();
+        payload.acceleration_g = acceleration_avg;
         scd_data scd_data;
         scd.read_data(scd_data);
         payload.CO2 = scd_data.CO2;
@@ -253,10 +254,8 @@ void loop()
         // Send a most_environmental payload
         most_environmental_payload payload;
         payload.pressure_hpa = pressure.get_pressure_hpa();
-        payload.altitude_m = altimeter.get_altitude(); // TODO: Make variable to store pressure on start-up
-        float ax, ay, az;
-        accelerometer.get_acceleration(ax, ay, az);
-        payload.acceleration_g = ay;
+        payload.altitude_m = altimeter.get_altitude();
+        payload.acceleration_g = acceleration_avg;
         
         uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
         if (const uint8_t ret = protocol.encode(MOST_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
@@ -266,10 +265,8 @@ void loop()
     }
     
     // If acceleration stays below the threshold for long enough, start the experiment!
-    // TODO: replace with exponential averaging for acceleration
-    float ax, ay, az;
-    accelerometer.get_acceleration(ax, ay, az);
-    if (abs(ax) < EXPERIMENT_ACCEL_THRESHOLD && abs(ay) < EXPERIMENT_ACCEL_THRESHOLD && abs(az) < EXPERIMENT_ACCEL_THRESHOLD)
+    avg_acceleration();
+    if (abs(acceleration_avg) < EXPERIMENT_ACCEL_THRESHOLD)
     {
         microgravity_counter++;
         if (microgravity_counter > 10)
@@ -298,4 +295,16 @@ void loop()
     
     // TODO: Replace with timer and constant radio checking during it
     delay(100);
+}
+
+void avg_acceleration()
+{
+    constexpr int old_amt = 5;
+    constexpr int new_amt = 5;
+    
+    float ax, ay, az;
+    accelerometer.get_acceleration(ax, ay, az);
+    const float norm_accel = sqrt(ax * ax + ay * ay + az * az);
+    
+    acceleration_avg = (acceleration_avg * old_amt + norm_accel * new_amt) / (old_amt + new_amt);
 }
