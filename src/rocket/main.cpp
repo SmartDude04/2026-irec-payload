@@ -31,10 +31,10 @@ protocol protocol;
 accelerometer accelerometer;
 altimeter altimeter;
 
-uint8_t microgravity_counter = 0;
-double acceleration_avg = 0;
+double acceleration_norm = 0;
 bool experiment_started = false;
 bool armed = false;
+uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
 
 void avg_acceleration();
 
@@ -142,7 +142,6 @@ void setup()
             string_payload fatal;
             strcpy(fatal.message, message.c_str());
             
-            uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
             uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&fatal), sizeof(fatal), radio_packet, sizeof(radio_packet));
             if (ret == 0)
             {
@@ -241,14 +240,13 @@ void loop()
         all_environmental_payload payload;
         payload.pressure_hpa = pressure.get_pressure_hpa();
         payload.altitude_m = altimeter.get_altitude();
-        payload.acceleration_g = acceleration_avg;
+        payload.acceleration_g = acceleration_norm;
         scd_data scd_data;
         scd.read_data(scd_data);
         payload.CO2 = scd_data.CO2;
         payload.temperature = scd_data.temperature;
         payload.humidity = scd_data.humidity;
         
-        uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
         if (const uint8_t ret = protocol.encode(ALL_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
         {
             radio.send(radio_packet, ret);
@@ -260,9 +258,8 @@ void loop()
         most_environmental_payload payload;
         payload.pressure_hpa = pressure.get_pressure_hpa();
         payload.altitude_m = altimeter.get_altitude();
-        payload.acceleration_g = acceleration_avg;
+        payload.acceleration_g = acceleration_norm;
         
-        uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
         if (const uint8_t ret = protocol.encode(MOST_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
         {
             radio.send(radio_packet, ret);
@@ -271,16 +268,14 @@ void loop()
     
     // If acceleration stays below the threshold for long enough, start the experiment!
     avg_acceleration();
-    if (experiment_started || abs(acceleration_avg) < EXPERIMENT_ACCEL_THRESHOLD)
+    if (experiment_started || abs(acceleration_norm) < EXPERIMENT_ACCEL_THRESHOLD)
     {
         // Starting the experiment!
         experiment_started = true;
-        microgravity_counter = 0;
         
         // Send a message saying it has started
         string_payload payload;
         strcpy(payload.message, "Experiment started!");
-        uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
         if (const uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
         {
             radio.send(radio_packet, ret);
@@ -290,7 +285,7 @@ void loop()
         servo.write(180);
         
         // If we are back to semi-normal g's (parachute deployed), stop the experiment
-        if (abs(acceleration_avg) < ACCELERATION_GROUND - 1.0)
+        if (abs(acceleration_norm) < ACCELERATION_GROUND - 1.0)
         {
             experiment_started = false;
         }
@@ -306,5 +301,165 @@ void avg_acceleration()
     accelerometer.get_acceleration(ax, ay, az);
     const float norm_accel = sqrt(ax * ax + ay * ay + az * az);
     
-    acceleration_avg = (acceleration_avg * old_amt + norm_accel * new_amt) / (old_amt + new_amt);
+    acceleration_norm = (acceleration_norm * old_amt + norm_accel * new_amt) / (old_amt + new_amt);
+}
+
+void handle_radio_messages()
+{
+    uint8_t message[RH_RF95_MAX_MESSAGE_LEN];
+    uint8_t message_length = sizeof(message_length);
+    
+    if (!radio.receive(radio_packet, message_length))
+    {
+        return;
+    }
+    
+    protocol::packet packet = {};
+    if (!protocol::decode(message, message_length, packet))
+    {
+        // Something happened (bad checksum, failed to decode, etc.); print error and return
+        Serial.println("ERROR: Failed to decode packet. RSSI: " + String(radio.last_rssi()));
+    }
+    
+    switch (packet.type)
+    {
+    case ARM_PAYLOAD_TYPE: {
+        const bool do_arm = reinterpret_cast<arm_payload*>(packet.payload)->arm;
+        
+        if (do_arm)
+        {
+            if (!armed) // If we aren't armed, do so
+            {
+                armed = true;
+                experiment_started = false;
+                servo.write(0);
+            }
+            send_arm_ack(true);
+        }
+        else
+        {
+            armed = false;
+            experiment_started = false;
+            servo.write(180);
+            send_arm_ack(false);
+        }
+        break;
+    }
+    default: {
+        // Payload type not recognized / not available for reception; print error
+        Serial.println("ERROR: Received packet with unknown payload type. RSSI: " + String(radio.last_rssi()));
+    }
+    }
+}
+
+bool send_arm_ack(const bool arm_state)
+{
+    arm_payload ack = { arm_state };
+    
+    const uint8_t len = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&ack), sizeof(ack), radio_packet, sizeof(radio_packet));
+    
+    if (len == 0)
+    {
+        return false;
+    }
+    
+    return radio.send(radio_packet, len);
+}
+
+void send_environmental_packet()
+{
+    // If we have C02 and temp data, then send it. Otherwise, don't
+    if (scd::data_ready())
+    {
+        all_environmental_payload payload;
+        payload.pressure_hpa = pressure.get_pressure_hpa();
+        payload.altitude_m = altimeter.get_altitude();
+        payload.acceleration_g = acceleration_norm;
+        
+        scd_data cur_scd_values;
+        if (scd.read_data(cur_scd_values))
+        {
+            payload.CO2 = cur_scd_values.CO2;
+            payload.temperature = cur_scd_values.temperature;
+            payload.humidity = cur_scd_values.humidity;
+            
+            if (const uint8_t ret = protocol.encode(ALL_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
+            {
+                radio.send(radio_packet, ret);
+            }
+            else
+            {
+                // Something happened, set them to zero but log it
+                Serial.println("ERROR: Failed to encode the environmental data packet");
+                payload.CO2 = 0.0f;
+                payload.temperature = 0.0f;
+                payload.humidity = 0.0f;
+            }
+            
+            const uint8_t packet_length = protocol.encode(ALL_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
+            
+            if (packet_length > 0)
+            {
+                radio.send(radio_packet, packet_length);
+            }
+            else
+            {
+                Serial.println("ERROR: Failed to encode the environmental data packet");
+            }
+        }
+    }
+    else // SCD30 data isn't ready
+    {
+        most_environmental_payload payload;
+        payload.pressure_hpa = pressure.get_pressure_hpa();
+        payload.altitude_m = altimeter.get_altitude();
+        payload.acceleration_g = acceleration_norm;
+        
+        const uint8_t len = protocol.encode(MOST_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
+        
+        if (len > 0)
+        {
+            radio.send(radio_packet, len);
+        }
+        else
+        {
+            Serial.println("ERROR: Failed to encode the environmental data packet");
+        }
+    }
+}
+
+void update_experiment_state()
+{
+    if (!experiment_started && acceleration_norm < EXPERIMENT_ACCEL_THRESHOLD)
+    {
+        // Start the experiment!
+        experiment_started = true;
+        servo.write(180);
+        
+        string_payload payload;
+        strcpy(payload.message, "Experiment started!");
+        
+        const uint8_t len = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
+        
+        if (len > 0)
+        {
+            radio.send(radio_packet, len);
+        }
+    }
+    
+    if (experiment_started && acceleration_norm > (ACCELERATION_GROUND - 1.0))
+    {
+        experiment_started = false;
+        servo.write(0);
+        
+        string_payload payload;
+        strcpy(payload.message, "Experiment ended!");
+        
+        const uint8_t len = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
+        
+        if (len > 0)
+        {
+            radio.send(radio_packet, len);
+        }
+    }
 }
