@@ -209,7 +209,6 @@ void loop()
                         arm_return.arm = true;
                         message_length = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&arm_return), sizeof(arm_return), message, sizeof(message));
                         radio.send(message, message_length);
-                        return;
                     }
                     else
                     {
@@ -220,8 +219,8 @@ void loop()
                         message_length = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&arm_return), sizeof(arm_return), message, sizeof(message));
                         radio.send(message, message_length);
                         armed = false;
-                        return;
                     }
+                    return;
                 }
             }
         }
