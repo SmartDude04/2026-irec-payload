@@ -1,3 +1,6 @@
+
+#include <accelerometer.h>
+#include <altimeter.h>
 #include <Arduino.h>
 #include <radio.h>
 #include <pressure.h>
@@ -9,18 +12,23 @@
 #include <payloads/all_environmental.h>
 #include <Servo.h>
 
-#define EXPERIMENT_ACCEL_THRESHOLD 100
+#define DEBUG 1
+#define EXPERIMENT_ACCEL_THRESHOLD 0.1
 
 constexpr bool RADIO = true;
 constexpr bool PRESSURE = true;
 constexpr bool SCD = true;
 constexpr bool SERVO = true;
+constexpr bool ALTIMETER = true;
+constexpr bool ACCELEROMETER = true;
 
 radio radio;
 pressure pressure;
 scd scd;
 Servo servo;
 protocol protocol;
+accelerometer accelerometer;
+altimeter altimeter;
 
 uint8_t microgravity_counter = 0;
 bool experiment_started = false;
@@ -30,7 +38,7 @@ void setup()
 {
     // Begin serial output
     Serial.begin(115200);
-    while (!Serial) { delay(1); }
+    if constexpr (DEBUG) { while (!Serial) { delay(1); } }
     
     // Start I2C and wait 2 seconds to ensure all sensors are booted up
     Wire.begin();
@@ -40,7 +48,8 @@ void setup()
     const bool pressure_init = PRESSURE ? pressure.init() : false;
     const bool scd_init = SCD ? scd.init() : false;
     const bool servo_init = SERVO ? servo.attach(5) != INVALID_SERVO : false;
-    
+    const bool altimeter_init = ALTIMETER ? altimeter.init() : false;
+    const bool accelerometer_init = ACCELEROMETER ? accelerometer.init() : false;
     
     // Initalize the radio
     if (RADIO)
@@ -92,8 +101,31 @@ void setup()
         }
     }
     
+    if (ALTIMETER)
+    {
+        if (!altimeter_init)
+        {
+            Serial.println("ERROR: Altimeter failed to initialize");
+        }
+        else
+        {
+            Serial.println("Altimeter initialized");
+        }
+    }
     
-    if ((RADIO && !radio_init) || (PRESSURE && !pressure_init) || (SCD && !scd_init) || (SERVO && !servo_init))
+    if (ACCELEROMETER)
+    {
+        if (!accelerometer_init)
+        {
+            Serial.println("ERROR: Accelerometer failed to initialize");
+        }
+        else
+        {
+            Serial.println("Accelerometer initialized");
+        }
+    }
+    
+    if ((RADIO && !radio_init) || (PRESSURE && !pressure_init) || (SCD && !scd_init) || (SERVO && !servo_init) || (ALTIMETER && !altimeter_init) || (ACCELEROMETER && !accelerometer_init))
     {
         // If the radio fine but others are bad, send a message over the radio. Otherwise, there's not much we can do
         if (RADIO && radio_init)
@@ -231,32 +263,36 @@ void loop()
     }
     
     // If acceleration stays below the threshold for long enough, start the experiment!
-    // if (abs(mpu.getAccelerationX()) < EXPERIMENT_ACCEL_THRESHOLD && abs(mpu.getAccelerationY()) < EXPERIMENT_ACCEL_THRESHOLD && abs(mpu.getAccelerationZ()) < EXPERIMENT_ACCEL_THRESHOLD)
-    // {
-    //     microgravity_counter++;
-    //     if (microgravity_counter > 10)
-    //     {
-    //         // Starting the experiment!
-    //         experiment_started = true;
-    //         microgravity_counter = 0;
-    //         
-    //         // Send a message saying it has started
-    //         string_payload payload;
-    //         strcpy(payload.message, "Experiment started!");
-    //         uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
-    //         const uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
-    //         if (ret)
-    //         {
-    //             radio.send(radio_packet, ret);
-    //         }
-    //         
-    //         // Turn the servo
-    //         servo.write(180);
-    //     }
-    // }
-    // else
-    // {
-    //     microgravity_counter = 0;
-    // }
+    // TODO: replace with exponential averaging for acceleration
+    float ax, ay, az;
+    accelerometer.get_acceleration(ax, ay, az);
+    if (abs(ax) < EXPERIMENT_ACCEL_THRESHOLD && abs(ay) < EXPERIMENT_ACCEL_THRESHOLD && abs(az) < EXPERIMENT_ACCEL_THRESHOLD)
+    {
+        microgravity_counter++;
+        if (microgravity_counter > 10)
+        {
+            // Starting the experiment!
+            experiment_started = true;
+            microgravity_counter = 0;
+            
+            // Send a message saying it has started
+            string_payload payload;
+            strcpy(payload.message, "Experiment started!");
+            uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
+            if (const uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
+            {
+                radio.send(radio_packet, ret);
+            }
+            
+            // Turn the servo
+            servo.write(180);
+        }
+    }
+    else
+    {
+        microgravity_counter = 0;
+    }
+    
+    // TODO: Replace with timer and constant radio checking during it
     delay(100);
 }
