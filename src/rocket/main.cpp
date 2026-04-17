@@ -1,4 +1,3 @@
-
 #include <accelerometer.h>
 #include <altimeter.h>
 #include <Arduino.h>
