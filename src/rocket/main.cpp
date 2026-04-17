@@ -13,6 +13,8 @@
 
 #define DEBUG 1
 #define EXPERIMENT_ACCEL_THRESHOLD 0.1
+#define ACCELERATION_GROUND 9.8
+#define RADIO_WAIT_TIME 100
 
 constexpr bool RADIO = true;
 constexpr bool PRESSURE = true;
@@ -192,37 +194,41 @@ void loop()
         }
     }
     
-    // Check for any radio messages
-    if (radio.message_available())
+    // Check for any radio messages *for 10 ms*
+    const unsigned long time_start = millis();
+    while (millis() - time_start < RADIO_WAIT_TIME)
     {
-        Serial.println("Radio message received");
-        uint8_t message[RH_RF95_MAX_MESSAGE_LEN];
-        if (uint8_t message_length = sizeof(message); radio.receive(message, message_length))
+        if (radio.message_available())
         {
-            if (protocol::packet packet = {}; protocol::decode(message, message_length, packet))
+            Serial.println("Radio message received");
+            uint8_t message[RH_RF95_MAX_MESSAGE_LEN];
+            if (uint8_t message_length = sizeof(message); radio.receive(message, message_length))
             {
-                // Right now, the only meaningful type would be an unarm signal
-                if (packet.type == ARM_PAYLOAD_TYPE)
+                if (protocol::packet packet = {}; protocol::decode(message, message_length, packet))
                 {
-                    if (reinterpret_cast<arm_payload*>(packet.payload)->arm)
+                    // Right now, the only meaningful type would be an unarm signal
+                    if (packet.type == ARM_PAYLOAD_TYPE)
                     {
-                        // We are already armed, but still send back a message confirming being armed
-                        arm_payload arm_return;
-                        arm_return.arm = true;
-                        message_length = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&arm_return), sizeof(arm_return), message, sizeof(message));
-                        radio.send(message, message_length);
+                        if (reinterpret_cast<arm_payload*>(packet.payload)->arm)
+                        {
+                            // We are already armed, but still send back a message confirming being armed
+                            arm_payload arm_return;
+                            arm_return.arm = true;
+                            message_length = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&arm_return), sizeof(arm_return), message, sizeof(message));
+                            radio.send(message, message_length);
+                        }
+                        else
+                        {
+                            // Unarm and send that back to the ground station
+                            arm_payload arm_return;
+                            arm_return.arm = false;
+                            experiment_started = false;
+                            message_length = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&arm_return), sizeof(arm_return), message, sizeof(message));
+                            radio.send(message, message_length);
+                            armed = false;
+                        }
+                        return;
                     }
-                    else
-                    {
-                        // Unarm and send that back to the ground station
-                        arm_payload arm_return;
-                        arm_return.arm = false;
-                        experiment_started = false;
-                        message_length = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&arm_return), sizeof(arm_return), message, sizeof(message));
-                        radio.send(message, message_length);
-                        armed = false;
-                    }
-                    return;
                 }
             }
         }
@@ -265,35 +271,30 @@ void loop()
     
     // If acceleration stays below the threshold for long enough, start the experiment!
     avg_acceleration();
-    if (abs(acceleration_avg) < EXPERIMENT_ACCEL_THRESHOLD)
+    if (experiment_started || abs(acceleration_avg) < EXPERIMENT_ACCEL_THRESHOLD)
     {
-        microgravity_counter++;
-        if (microgravity_counter > 10)
+        // Starting the experiment!
+        experiment_started = true;
+        microgravity_counter = 0;
+        
+        // Send a message saying it has started
+        string_payload payload;
+        strcpy(payload.message, "Experiment started!");
+        uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
+        if (const uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
         {
-            // Starting the experiment!
-            experiment_started = true;
-            microgravity_counter = 0;
-            
-            // Send a message saying it has started
-            string_payload payload;
-            strcpy(payload.message, "Experiment started!");
-            uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
-            if (const uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
-            {
-                radio.send(radio_packet, ret);
-            }
-            
-            // Turn the servo
-            servo.write(180);
+            radio.send(radio_packet, ret);
+        }
+        
+        // Turn the servo
+        servo.write(180);
+        
+        // If we are back to semi-normal g's (parachute deployed), stop the experiment
+        if (abs(acceleration_avg) < ACCELERATION_GROUND - 1.0)
+        {
+            experiment_started = false;
         }
     }
-    else
-    {
-        microgravity_counter = 0;
-    }
-    
-    // TODO: Replace with timer and constant radio checking during it
-    delay(100);
 }
 
 void avg_acceleration()
