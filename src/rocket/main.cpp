@@ -233,8 +233,10 @@ void loop()
         // Send an all_environmental payload
         all_environmental_payload payload;
         payload.pressure_hpa = pressure.get_pressure_hpa();
-        // payload.altitude_m = bmp.readAltitude(); // TODO: Make variable to store pressure on start-up
-        // payload.acceleration_g = mpu.getAccelerationX();
+        payload.altitude_m = altimeter.get_altitude(); // TODO: Make variable to store pressure on start-up
+        float ax, ay, az;
+        accelerometer.get_acceleration(ax, ay, az);
+        payload.acceleration_g = ay;
         scd_data scd_data;
         scd.read_data(scd_data);
         payload.CO2 = scd_data.CO2;
@@ -252,8 +254,10 @@ void loop()
         // Send a most_environmental payload
         most_environmental_payload payload;
         payload.pressure_hpa = pressure.get_pressure_hpa();
-        // payload.altitude_m = bmp.readAltitude();
-        // payload.acceleration_g = mpu.getAccelerationX();
+        payload.altitude_m = altimeter.get_altitude(); // TODO: Make variable to store pressure on start-up
+        float ax, ay, az;
+        accelerometer.get_acceleration(ax, ay, az);
+        payload.acceleration_g = ay;
         
         uint8_t radio_packet[protocol::MIN_BYTES_FOR_PACKET];
         if (const uint8_t ret = protocol.encode(MOST_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
