@@ -8,12 +8,12 @@
 // Frequency definition
 #define RF95_FREQ 433.0
 
-radio::radio() : rf95(RFM95_CS, RFM95_INT)
+radio_t::radio_t() : rf95(RFM95_CS, RFM95_INT)
 {
     
 }
 
-bool radio::init()
+bool radio_t::init()
 {
     // Set RST and buitin LED as outputs
     pinMode(LED_BUILTIN, OUTPUT);
@@ -56,7 +56,7 @@ bool radio::init()
 }
 
 
-bool radio::send(const String &message)
+bool radio_t::send(const String &message)
 {
     // Make sure message is short enough
     if (message.length() > RH_RF95_MAX_MESSAGE_LEN)
@@ -79,7 +79,7 @@ bool radio::send(const String &message)
     return true;
 }
 
-bool radio::send(const uint8_t *const message, const uint8_t message_length)
+bool radio_t::send(const uint8_t *const message, const uint8_t message_length)
 {
     if (message_length > RH_RF95_MAX_MESSAGE_LEN)
     {
@@ -99,17 +99,17 @@ bool radio::send(const uint8_t *const message, const uint8_t message_length)
     return true;
 }
 
-bool radio::wait_until_message(const int timeout)
+bool radio_t::wait_until_message(const int timeout)
 {
     return rf95.waitAvailableTimeout(timeout);
 }
 
-bool radio::message_available()
+bool radio_t::message_available()
 {
     return rf95.available();
 }
 
-bool radio::receive(String &message)
+bool radio_t::receive(String &message)
 {
     if (rf95.available())
     {
@@ -125,11 +125,11 @@ bool radio::receive(String &message)
     return false;
 }
 
-bool radio::receive(uint8_t *message, uint8_t &message_length)
+bool radio_t::receive(uint8_t *message, uint8_t &message_length)
 {
     if (rf95.available())
     {
-        uint8_t buf[RH_RF95_MAX_MESSAGE_LEN + 1];
+        uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
         uint8_t len = sizeof(buf);
         if (rf95.recv(buf, &len))
         {
@@ -144,7 +144,7 @@ bool radio::receive(uint8_t *message, uint8_t &message_length)
     return false;
 }
 
-int16_t radio::last_rssi()
+int16_t radio_t::last_rssi()
 {
     return rf95.lastRssi();
 }

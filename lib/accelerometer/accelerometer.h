@@ -3,10 +3,10 @@
 
 #include <Adafruit_LSM6DSL.h>
 
-class accelerometer
+class accelerometer_t
 {
 public:
-    accelerometer();
+    accelerometer_t();
 
     /**
      * Attempts to find and initialize the accelerometer at I2C address 0x6A with the following pinouts:

@@ -2,7 +2,7 @@
 
 #define SEA_LEVEL_PRESSURE 1013.25
 
-bool altimeter::init()
+bool altimeter_t::init()
 {
     bool success = false;
     for (int i = 0; i < 5; i++)
@@ -27,7 +27,7 @@ bool altimeter::init()
     return true;
 }
 
-float altimeter::get_altitude()
+float altimeter_t::get_altitude()
 {
     return bmp388.readAltitude(SEA_LEVEL_PRESSURE);
 }

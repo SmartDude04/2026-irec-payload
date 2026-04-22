@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-class protocol
+class protocol_t
 {
 public:
     // Byte that starts all communication
@@ -34,7 +34,7 @@ public:
     /**
      * Initialize the protocol object. Must be done before attempting to transmit data!
      */
-    protocol();
+    protocol_t();
 
     /**
      * 

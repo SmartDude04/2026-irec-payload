@@ -2,7 +2,7 @@
 #define INC_2026_IREC_PAYLOAD_ALTIMETER_H
 #include <Adafruit_BMP3XX.h>
 
-class altimeter
+class altimeter_t
 {
 public:
     /**

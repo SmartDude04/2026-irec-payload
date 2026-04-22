@@ -2,9 +2,9 @@
 
 #include <RH_RF95.h>
 
-protocol::protocol() : payload_num(0) {}
+protocol_t::protocol_t() : payload_num(0) {}
 
-uint8_t protocol::encode(const uint8_t type, const uint8_t *payload, const uint8_t payload_length, uint8_t *bytes, const uint16_t bytes_length)
+uint8_t protocol_t::encode(const uint8_t type, const uint8_t *payload, const uint8_t payload_length, uint8_t *bytes, const uint16_t bytes_length)
 {
     if (bytes == nullptr || (payload == nullptr && payload_length > 0)) return 0;
     
@@ -44,7 +44,7 @@ uint8_t protocol::encode(const uint8_t type, const uint8_t *payload, const uint8
     return index;
 }
 
-bool protocol::decode(const uint8_t *const bytes, const uint8_t len, packet &dest_packet)
+bool protocol_t::decode(const uint8_t *const bytes, const uint8_t len, packet &dest_packet)
 {
     if (bytes == nullptr) return false;
     decode_state cur_state = WAIT_START_BYTE;
@@ -125,7 +125,7 @@ bool protocol::decode(const uint8_t *const bytes, const uint8_t len, packet &des
     return false;
 }
 
-uint8_t protocol::compute_checksum(const uint8_t *buffer, const uint8_t length)
+uint8_t protocol_t::compute_checksum(const uint8_t *buffer, const uint8_t length)
 {
     uint8_t checksum = 0;
     for (uint8_t i = 0; i < length; i++)

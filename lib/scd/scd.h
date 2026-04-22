@@ -9,12 +9,12 @@ typedef struct
     float temperature;
     float humidity;
     float CO2;
-} scd_data;
+} scd_data_t;
 
-class scd
+class scd_t
 {
 public:
-    scd();
+    scd_t();
 
     /**
      * Attempts to find and initialize the SCD30 sensor at I2C address x61 with the following pinouts:
@@ -60,7 +60,7 @@ public:
      * @param data Reference to a struct whose data will be overridden by the data just read, if successful
      * @return True if successfully read data from the sensor; false otherwise
      */
-    bool read_data(scd_data &data);
+    bool read_data(scd_data_t &data);
     
     /**
      * Attempts to calibrate the CO2 sensor with a known environmental reading. This value is saved to the SCD30's

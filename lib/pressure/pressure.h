@@ -3,10 +3,10 @@
 
 #include <Adafruit_MPRLS.h>
 
-class pressure
+class pressure_t
 {
 public:
-    pressure();
+    pressure_t();
 
     /**
      * Attempts to find and initialize the MPRLS Pressure Sensor at I2C address 0x18 with pinouts:

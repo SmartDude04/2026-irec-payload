@@ -4,10 +4,10 @@
 #include <Arduino.h>
 #include <RH_RF95.h>
 
-class radio
+class radio_t
 {
 public:
-    radio();
+    radio_t();
 
     /**
      * Initializes the radio set to the following pinouts:
@@ -68,7 +68,7 @@ public:
      * @param message_length The maximum possible message length for this buffer should be passed in, and on success the
      * value will change to the size of the message received
      * @return True if successfully stored the message; false otherwise. This could be due to a radio failure or too
-     * small a buffer. It is always recommended to make a buffer of size RH_RF95_MAX_MESSAGE_LEN + 1
+     * small a buffer. It is always recommended to make a buffer of size RH_RF95_MAX_MESSAGE_LEN
      */
     bool receive(uint8_t *message, uint8_t &message_length);
 

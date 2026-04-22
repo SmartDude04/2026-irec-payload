@@ -2,9 +2,9 @@
 
 #define RDY_PIN 9
 
-scd::scd() = default;
+scd_t::scd_t() = default;
 
-bool scd::init()
+bool scd_t::init()
 {
     pinMode(RDY_PIN, INPUT);
     delay(10);
@@ -21,27 +21,27 @@ bool scd::init()
     return false;
 }
 
-uint16_t scd::get_measurement_interval()
+uint16_t scd_t::get_measurement_interval()
 {
     return scd30.getMeasurementInterval();
 }
 
-bool scd::set_measurement_interval(const uint16_t interval)
+bool scd_t::set_measurement_interval(const uint16_t interval)
 {
     return scd30.setMeasurementInterval(interval);
 }
 
-bool scd::set_altitude_offset(const uint16_t altitude)
+bool scd_t::set_altitude_offset(const uint16_t altitude)
 {
     return scd30.setAltitudeOffset(altitude);
 }
 
-bool scd::data_ready()
+bool scd_t::data_ready()
 {
     return digitalRead(RDY_PIN) == HIGH;
 }
 
-bool scd::read_data(scd_data &data)
+bool scd_t::read_data(scd_data_t &data)
 {
     // TODO: There is an altitude offset that we should use then we get the altimeter
     if (data_ready())
@@ -60,7 +60,7 @@ bool scd::read_data(scd_data &data)
     return false;
 }
 
-bool scd::calibrate(const uint16_t altitude, const uint16_t true_co2)
+bool scd_t::calibrate(const uint16_t altitude, const uint16_t true_co2)
 {
     const uint16_t cur_alt = scd30.getAltitudeOffset();
     bool ret = scd30.setAltitudeOffset(altitude);

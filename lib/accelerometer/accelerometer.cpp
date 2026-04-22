@@ -1,8 +1,8 @@
 #include "accelerometer.h"
 
-accelerometer::accelerometer() = default;
+accelerometer_t::accelerometer_t() = default;
 
-bool accelerometer::init()
+bool accelerometer_t::init()
 {
     bool success = false;
     for (int i = 0; i < 5; i++)
@@ -29,7 +29,7 @@ bool accelerometer::init()
     return true;
 }
 
-bool accelerometer::get_acceleration(float &x, float &y, float &z)
+bool accelerometer_t::get_acceleration(float &x, float &y, float &z)
 {
     sensors_event_t accel;
     sensors_event_t gyro;
