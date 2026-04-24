@@ -20,11 +20,14 @@ bool radio_t::init()
     pinMode(RFM95_RST, OUTPUT); // Pulled to HIGH by default, which is reset. Pull to LOW for normal operation
     digitalWrite(RFM95_RST, HIGH);
     
+    delay(10);
     // Peform a manual reset of the radio by toggling the reset pin
     digitalWrite(RFM95_RST, LOW);
     delay(10);
     digitalWrite(RFM95_RST, HIGH);
-    delay(10);
+    delay(100);
+    
+    SPI.begin();
     
     // Attempt to initialize the radio 5 times before failing
     bool init_success = false;
@@ -35,6 +38,7 @@ bool radio_t::init()
             init_success = true;
             break;
         }
+        delay(100);
     }
     
     if (!init_success)
@@ -127,18 +131,16 @@ bool radio_t::receive(String &message)
 
 bool radio_t::receive(uint8_t *message, uint8_t &message_length)
 {
+    if (message_length < RH_RF95_MAX_MESSAGE_LEN)
+    {
+        return false;
+    }
+    
     if (rf95.available())
     {
-        uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-        uint8_t len = sizeof(buf);
-        if (rf95.recv(buf, &len))
+        if (rf95.recv(message, &message_length))
         {
-            if (len <= message_length)
-            {
-                memcpy(message, buf, len);
-                message_length = len;
-                return true;
-            }
+            return true;
         }
     }
     return false;
