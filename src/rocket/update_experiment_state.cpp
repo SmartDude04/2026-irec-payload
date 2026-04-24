@@ -5,7 +5,7 @@ void update_experiment_state()
 {
     uint8_t radio_packet[protocol_t::MIN_BYTES_FOR_PACKET];
     
-    if (!experiment_started && acceleration_norm < EXPERIMENT_ACCEL_THRESHOLD)
+    if (!experiment_started && acceleration_norm < EXPERIMENT_ACCEL_THRESHOLD && altitude_m >= EXPERIMENT_ALTITUDE_THRESHOLD)
     {
         // Start the experiment!
         experiment_started = true;
@@ -22,7 +22,7 @@ void update_experiment_state()
         }
     }
     
-    if (experiment_started && acceleration_norm > (ACCELERATION_GROUND - 1.0))
+    if (experiment_started && acceleration_norm > ACCELERATION_GROUND - 1.0)
     {
         experiment_started = false;
         servo.write(0);
