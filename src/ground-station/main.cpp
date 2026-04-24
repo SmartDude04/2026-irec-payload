@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <radio.h>
-
 #include <protocol.h>
 #include <payloads/arm_payload.h>
 #include <payloads/pressure_payload.h>
@@ -9,8 +8,8 @@
 #include <payloads/most_environmental.h>
 #include <payloads/all_environmental.h>
 
-radio radio;
-protocol protocol;
+radio_t radio;
+protocol_t protocol;
 
 void setup()
 {
@@ -39,8 +38,8 @@ void loop()
         uint8_t message_length = sizeof(message);
         if (radio.receive(message, message_length))
         {
-            protocol::packet packet = {};
-            const bool decode_success = protocol::decode(message, message_length, packet);
+            protocol_t::packet packet = {};
+            const bool decode_success = protocol_t::decode(message, message_length, packet);
             if (!decode_success)
             {
                 Serial.println(
@@ -172,8 +171,8 @@ void loop()
                 uint8_t message_length = sizeof(message);
                 if (radio.receive(message, message_length))
                 {
-                    protocol::packet packet = {};
-                    const bool decode_success = protocol::decode(message, message_length, packet);
+                    protocol_t::packet packet = {};
+                    const bool decode_success = protocol_t::decode(message, message_length, packet);
                     if (decode_success && packet.type == ARM_PAYLOAD_TYPE)
                     {
                         Serial.println("Received " + String(reinterpret_cast<arm_payload*>(packet.payload)->arm ? "arm" : "disarm") + " signal from flight computer");
