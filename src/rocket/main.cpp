@@ -16,9 +16,10 @@ protocol_t protocol;
 accelerometer_t accelerometer;
 altimeter_t altimeter;
 
-double acceleration_norm = 0;
+double acceleration_norm = -1;
+double altitude_m = 0;
 bool experiment_started = false;
-bool armed = false;
+bool armed = true;
 uint8_t radio_packet[protocol_t::MIN_BYTES_FOR_PACKET];
 
 void setup() // TODO: Make into functions
@@ -148,137 +149,12 @@ void setup() // TODO: Make into functions
 
 void loop()
 {
-    // Handle radio messages for 100 ms
+    // TODO: Replace all prints with new debug_print() function
+    Serial.print("Time: " + String(static_cast<double>(millis()) / 1000.0) + " ");
     handle_incoming_radio_messages();
-    // // If not armed, wait until the arm signal through the radio is given
-    // if (!armed)
-    // {
-    //     while (true)
-    //     {
-    //         if (radio.message_available())
-    //         {
-    //             uint8_t message[RH_RF95_MAX_MESSAGE_LEN];
-    //             if (uint8_t message_length = sizeof(message); radio.receive(message, message_length))
-    //             {
-    //                 protocol::packet packet = {};
-    //                 if (const bool decode_success = protocol::decode(message, message_length, packet); decode_success && packet.type == ARM_PAYLOAD_TYPE && reinterpret_cast<arm_payload*>(packet.payload)->arm)
-    //                 {
-    //                     armed = true;
-    //                     
-    //                     // Send back a message confirming being armed
-    //                     arm_payload arm_return;
-    //                     arm_return.arm = true;
-    //                     servo.write(0);
-    //                     message_length = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&arm_return), sizeof(arm_return), message, sizeof(message));
-    //                     radio.send(message, message_length);
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    //
-    // // Check for any radio messages *for 10 ms*
-    // const unsigned long time_start = millis();
-    // while (millis() - time_start < RADIO_WAIT_TIME)
-    // {
-    //     if (radio.message_available())
-    //     {
-    //         Serial.println("Radio message received");
-    //         uint8_t message[RH_RF95_MAX_MESSAGE_LEN];
-    //         if (uint8_t message_length = sizeof(message); radio.receive(message, message_length))
-    //         {
-    //             if (protocol::packet packet = {}; protocol::decode(message, message_length, packet))
-    //             {
-    //                 // Right now, the only meaningful type would be an unarm signal
-    //                 if (packet.type == ARM_PAYLOAD_TYPE)
-    //                 {
-    //                     if (reinterpret_cast<arm_payload*>(packet.payload)->arm)
-    //                     {
-    //                         // We are already armed, but still send back a message confirming being armed
-    //                         arm_payload arm_return;
-    //                         arm_return.arm = true;
-    //                         message_length = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&arm_return), sizeof(arm_return), message, sizeof(message));
-    //                         radio.send(message, message_length);
-    //                     }
-    //                     else
-    //                     {
-    //                         // Unarm and send that back to the ground station
-    //                         arm_payload arm_return;
-    //                         arm_return.arm = false;
-    //                         experiment_started = false;
-    //                         message_length = protocol.encode(ARM_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&arm_return), sizeof(arm_return), message, sizeof(message));
-    //                         radio.send(message, message_length);
-    //                         armed = false;
-    //                     }
-    //                     return;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    //
+    send_environmental_packet();
+    update_acceleration_altitude();
+    update_experiment_state();
     
-    // send_environmental_packet();
-    // avg_acceleration();
-    // update_experiment_state();
-    
-    // // Send environmental data
-    // if (scd::data_ready())
-    // {
-    //     // Send an all_environmental payload
-    //     all_environmental_payload payload;
-    //     payload.pressure_hpa = pressure.get_pressure_hpa();
-    //     payload.altitude_m = altimeter.get_altitude();
-    //     payload.acceleration_g = acceleration_norm;
-    //     scd_data scd_data;
-    //     scd.read_data(scd_data);
-    //     payload.CO2 = scd_data.CO2;
-    //     payload.temperature = scd_data.temperature;
-    //     payload.humidity = scd_data.humidity;
-    //     
-    //     if (const uint8_t ret = protocol.encode(ALL_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
-    //     {
-    //         radio.send(radio_packet, ret);
-    //     }
-    // }
-    // else
-    // {
-    //     // Send a most_environmental payload
-    //     most_environmental_payload payload;
-    //     payload.pressure_hpa = pressure.get_pressure_hpa();
-    //     payload.altitude_m = altimeter.get_altitude();
-    //     payload.acceleration_g = acceleration_norm;
-    //     
-    //     if (const uint8_t ret = protocol.encode(MOST_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
-    //     {
-    //         radio.send(radio_packet, ret);
-    //     }
-    // }
-    //
-    // // If acceleration stays below the threshold for long enough, start the experiment!
-    // avg_acceleration();
-    // if (experiment_started || abs(acceleration_norm) < EXPERIMENT_ACCEL_THRESHOLD)
-    // {
-    //     // Starting the experiment!
-    //     experiment_started = true;
-    //     
-    //     // Send a message saying it has started
-    //     string_payload payload;
-    //     strcpy(payload.message, "Experiment started!");
-    //     if (const uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet)))
-    //     {
-    //         radio.send(radio_packet, ret);
-    //     }
-    //     
-    //     // Turn the servo
-    //     servo.write(180);
-    //     
-    //     // If we are back to semi-normal g's (parachute deployed), stop the experiment
-    //     if (abs(acceleration_norm) < ACCELERATION_GROUND - 1.0)
-    //     {
-    //         experiment_started = false;
-    //     }
-    // }
-    
+    delay(1);
 }
