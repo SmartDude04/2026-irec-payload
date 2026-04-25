@@ -53,7 +53,7 @@ public:
      * Returns if data is ready to be collected from the sensor
      * @return True if data ready; false otherwise
      */
-    static bool data_ready();
+    bool data_ready();
 
     /**
      * Attempts to read data from the sensor and put it into the data parameter

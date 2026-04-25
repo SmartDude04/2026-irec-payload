@@ -13,5 +13,5 @@ bool send_arm_ack(const bool arm_state)
         return false;
     }
     
-    return radio.send(radio_packet, len);
+    return send_data(radio_packet, len, "Acknowledged arm signal");
 }

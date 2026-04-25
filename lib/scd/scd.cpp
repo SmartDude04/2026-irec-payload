@@ -38,7 +38,7 @@ bool scd_t::set_altitude_offset(const uint16_t altitude)
 
 bool scd_t::data_ready()
 {
-    return digitalRead(RDY_PIN) == HIGH;
+    return scd30.dataReady();
 }
 
 bool scd_t::read_data(scd_data_t &data)

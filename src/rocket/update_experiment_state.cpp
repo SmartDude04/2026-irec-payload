@@ -18,23 +18,26 @@ void update_experiment_state()
         
         if (len > 0)
         {
-            radio.send(radio_packet, len);
+            send_data(radio_packet, len, "Experiment started!");
         }
     }
     
-    if (experiment_started && acceleration_norm > ACCELERATION_GROUND - 1.0)
+    if constexpr (!DEBUG)
     {
-        experiment_started = false;
-        servo.write(0);
-        
-        string_payload payload;
-        strcpy(payload.message, "Experiment ended!");
-        
-        const uint8_t len = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
-        
-        if (len > 0)
+        if (experiment_started && acceleration_norm > ACCELERATION_GROUND - 1.0)
         {
-            radio.send(radio_packet, len);
+            experiment_started = false;
+            servo.write(0);
+            
+            string_payload payload;
+            strcpy(payload.message, "Experiment ended!");
+            
+            const uint8_t len = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
+            
+            if (len > 0)
+            {
+                send_data(radio_packet, len, "Experiment ended!");
+            }
         }
     }
 }

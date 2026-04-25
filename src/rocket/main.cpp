@@ -1,13 +1,6 @@
 #include <rocket.h>
 #include <payloads/string_payload.h>
 
-constexpr bool RADIO = true;
-constexpr bool PRESSURE = true;
-constexpr bool SCD = true;
-constexpr bool SERVO = true;
-constexpr bool ALTIMETER = true;
-constexpr bool ACCELEROMETER = true;
-
 radio_t radio;
 pressure_t pressure;
 scd_t scd;
@@ -15,6 +8,7 @@ Servo servo;
 protocol_t protocol;
 accelerometer_t accelerometer;
 altimeter_t altimeter;
+sd_t sd;
 
 double acceleration_norm = -1;
 double altitude_m = 0;
@@ -36,84 +30,100 @@ void setup() // TODO: Make into functions
     const bool pressure_init = PRESSURE ? pressure.init() : false;
     const bool scd_init = SCD ? scd.init() : false;
     const bool servo_init = SERVO ? servo.attach(5) != INVALID_SERVO : false;
+    if (servo_init) servo.write(0);
     const bool altimeter_init = ALTIMETER ? altimeter.init() : false;
     const bool accelerometer_init = ACCELEROMETER ? accelerometer.init() : false;
+    const bool sd_init = SD_CARD ? sd.init() : false;
     
-    // Initalize the radio
-    if (RADIO)
+    if constexpr (DEBUG)
     {
-        if (!radio_init)
+        if constexpr (RADIO)
         {
-            Serial.println("ERROR: Radio failed to initialize");
+            if (!radio_init)
+            {
+                Serial.println("ERROR: Radio failed to initialize");
+            }
+            else
+            {
+                Serial.println("Radio initialized");
+            }
         }
-        else
+        
+        if constexpr (PRESSURE)
         {
-            Serial.println("Radio initialized");
+            if (!pressure_init)
+            {
+                Serial.println("ERROR: Pressure sensor failed to initialize");
+            }
+            else
+            {
+                Serial.println("Pressure sensor initialized");
+            }
+        }
+        
+        if constexpr (SCD)
+        {
+            if (!scd_init)
+            {
+                Serial.println("ERROR: SCD30 failed to initialize");
+            }
+            else
+            {
+                scd.set_measurement_interval(2);
+                Serial.println("SCD30 initialized");
+            }
+        }
+        
+        if constexpr (SERVO)
+        {
+            if (!servo_init)
+            {
+                Serial.println("ERROR: Servo failed to initialize");
+            }
+            else
+            {
+                Serial.println("Servo initialized");
+            }
+        }
+        
+        if constexpr (ALTIMETER)
+        {
+            if (!altimeter_init)
+            {
+                Serial.println("ERROR: Altimeter failed to initialize");
+            }
+            else
+            {
+                Serial.println("Altimeter initialized");
+            }
+        }
+        
+        if constexpr (ACCELEROMETER)
+        {
+            if (!accelerometer_init)
+            {
+                Serial.println("ERROR: Accelerometer failed to initialize");
+            }
+            else
+            {
+                Serial.println("Accelerometer initialized");
+            }
+        }
+        
+        if constexpr (SD_CARD)
+        {
+            if (!sd_init)
+            {
+                Serial.println("ERROR: SD card failed to initialize");
+            }
+            else
+            {
+                Serial.println("SD card initialized");
+            }
         }
     }
     
-    if (PRESSURE)
-    {
-        if (!pressure_init)
-        {
-            Serial.println("ERROR: Pressure sensor failed to initialize");
-        }
-        else
-        {
-            Serial.println("Pressure sensor initialized");
-        }
-    }
-    
-    if (SCD)
-    {
-        if (!scd_init)
-        {
-            Serial.println("ERROR: SCD30 failed to initialize");
-        }
-        else
-        {
-            scd.set_measurement_interval(2);
-            Serial.println("SCD30 initialized");
-        }
-    }
-    
-    if (SERVO)
-    {
-        if (!servo_init)
-        {
-            Serial.println("ERROR: Servo failed to initialize");
-        }
-        else
-        {
-            Serial.println("Servo initialized");
-        }
-    }
-    
-    if (ALTIMETER)
-    {
-        if (!altimeter_init)
-        {
-            Serial.println("ERROR: Altimeter failed to initialize");
-        }
-        else
-        {
-            Serial.println("Altimeter initialized");
-        }
-    }
-    
-    if (ACCELEROMETER)
-    {
-        if (!accelerometer_init)
-        {
-            Serial.println("ERROR: Accelerometer failed to initialize");
-        }
-        else
-        {
-            Serial.println("Accelerometer initialized");
-        }
-    }
-    
-    if ((RADIO && !radio_init) || (PRESSURE && !pressure_init) || (SCD && !scd_init) || (SERVO && !servo_init) || (ALTIMETER && !altimeter_init) || (ACCELEROMETER && !accelerometer_init))
+    if ((RADIO && !radio_init) || (PRESSURE && !pressure_init) || (SCD && !scd_init) || (SERVO && !servo_init) || (ALTIMETER && !altimeter_init) || (ACCELEROMETER && !accelerometer_init) || (SD_CARD && !sd_init))
     {
         // If the radio fine but others are bad, send a message over the radio. Otherwise, there's not much we can do
         if (RADIO && radio_init)
@@ -129,32 +139,46 @@ void setup() // TODO: Make into functions
             uint8_t ret = protocol.encode(STRING_PAYLOAD_TYPE, reinterpret_cast<uint8_t *>(&fatal), sizeof(fatal), radio_packet, sizeof(radio_packet));
             if (ret == 0)
             {
-                Serial.println("Failed to encode the string. Can't send over the radio.");
+                if constexpr (DEBUG)
+                {
+                    Serial.println("Failed to encode the string. Can't send over the radio.");
+                }
             }
             else
             {
                 ret = radio.send(radio_packet, ret);
                 if (!ret)
                 {
-                    Serial.println("Failed to send the packet over the radio.");
+                    if constexpr (DEBUG)
+                    {
+                        Serial.println("Failed to send the packet over the radio.");
+                    }
                 }
             }
         }
-        Serial.println("ERROR: Failed to initialize sensor(s)... Program execution halted");
+        if constexpr (DEBUG)
+        {
+            Serial.println("ERROR: Failed to initialize sensor(s)... Program execution halted");
+        }
         while (true)
         {
         }
+    }
+    
+    if constexpr (!DEBUG)
+    {
+        servo.write(50);
+        delay(2000);
+        servo.write(0);
     }
 }
 
 void loop()
 {
-    // TODO: Replace all prints with new debug_print() function
-    Serial.print("Time: " + String(static_cast<double>(millis()) / 1000.0) + " ");
-    handle_incoming_radio_messages();
+    // handle_incoming_radio_messages();
     send_environmental_packet();
     update_acceleration_altitude();
     update_experiment_state();
     
-    delay(1);
+    delay(100);
 }
