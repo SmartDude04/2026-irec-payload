@@ -1,6 +1,6 @@
 #include "altimeter.h"
 
-#define SEA_LEVEL_PRESSURE 1013.25
+#define SEA_LEVEL_PRESSURE 1017.79
 
 bool altimeter_t::init()
 {

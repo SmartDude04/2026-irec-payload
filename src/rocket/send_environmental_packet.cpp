@@ -16,7 +16,7 @@ void send_environmental_packet()
         last_scd_data_ready = millis();
         all_environmental_payload payload;
         payload.pressure_hpa = pressure.get_pressure_hpa();
-        payload.altitude_m = altimeter.get_altitude();
+        payload.altitude_m = static_cast<float>(altitude_m);
         payload.acceleration_g = static_cast<float>(acceleration_norm);
         
         scd_data_t cur_scd_values;
@@ -72,6 +72,20 @@ void send_environmental_packet()
         payload.pressure_hpa = pressure.get_pressure_hpa();
         payload.altitude_m = altimeter.get_altitude();
         payload.acceleration_g = static_cast<float>(acceleration_norm);
+        
+        if (isnan(payload.pressure_hpa) ||
+            isnan(payload.altitude_m) ||
+            isnan(payload.acceleration_g) || 
+            payload.pressure_hpa < 100.0f ||
+            payload.pressure_hpa > 1200.0f)
+        {
+            if constexpr (DEBUG)
+            {
+                Serial.println("WARNING: Invalid environmental data, not sending and attempting to reset I2C");
+            }
+            recover_i2c_bus();
+            return;
+        }
         
         const uint8_t len = protocol.encode(MOST_ENVIRONMENTAL_TYPE, reinterpret_cast<uint8_t *>(&payload), sizeof(payload), radio_packet, sizeof(radio_packet));
         

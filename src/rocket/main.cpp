@@ -1,5 +1,6 @@
 #include <rocket.h>
 #include <payloads/string_payload.h>
+#include <Wire.h>
 
 radio_t radio;
 pressure_t pressure;

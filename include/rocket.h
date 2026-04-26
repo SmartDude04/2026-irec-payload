@@ -3,7 +3,7 @@
 
 #include <accelerometer.h>
 #include <altimeter.h>
-#include "../lib/sd/sd_card.h"
+#include <sd_card.h>
 #include <radio.h>
 #include <pressure.h>
 #include <scd.h>
@@ -11,8 +11,8 @@
 #include <Servo.h>
 
 constexpr bool DEBUG = false;
-constexpr double EXPERIMENT_ACCEL_THRESHOLD = DEBUG ? 6.0 : 0.5;
-constexpr double EXPERIMENT_ALTITUDE_THRESHOLD = DEBUG ? 0.0 : 500.0;
+constexpr double EXPERIMENT_ACCEL_THRESHOLD = DEBUG ? 6.0 : 3.0;
+constexpr double EXPERIMENT_ALTITUDE_THRESHOLD = DEBUG ? 0.0 : 150.0;
 constexpr double ACCELERATION_GROUND = 9.8;
 constexpr unsigned long RADIO_WAIT_TIME = 100;
 
@@ -46,5 +46,6 @@ bool send_arm_ack(bool arm_state);
 void send_environmental_packet();
 void update_experiment_state();
 bool send_data(const uint8_t *data, uint8_t len, const char *str_data);
+void recover_i2c_bus();
 
 #endif
